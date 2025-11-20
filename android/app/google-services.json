@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "944098835470",
+    "project_id": "messenger-6b5da",
+    "storage_bucket": "messenger-6b5da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:944098835470:android:32d3225ed286e484d7105f",
+        "android_client_info": {
+          "package_name": "com.example.messanger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8tAhIIWhqVlDfubL8uOfiTJMxArDzAvY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
