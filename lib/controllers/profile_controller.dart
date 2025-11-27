@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:messanger/controllers/auth_controller.dart';
 import 'package:messanger/models/user_model.dart';
 import 'package:messanger/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileController extends GetxController {
   final FirestoreService _firestoreService = FirestoreService();
@@ -26,8 +27,18 @@ class ProfileController extends GetxController {
   @override
   void onInit() {
     // TODO: implement onInit
-    _loadUserData();
+    print('ProfileController: onInit called');
     super.onInit();
+    loadUserData();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    // Ensure data is loaded when controller is ready
+    if (_currentUser.value == null) {
+      loadUserData();
+    }
   }
 
   @override
@@ -38,16 +49,42 @@ class ProfileController extends GetxController {
     emailController.dispose();
   }
 
-  void _loadUserData() {
+  void loadUserData() {
+    print('ProfileController: loadUserData called');
+    // Load initial user data
     final currentUserId = _authController.user?.uid;
-
+    print('ProfileController: Current user ID: $currentUserId');
+    
     if (currentUserId != null) {
+      print('ProfileController: Loading user data for UID: $currentUserId');
+      // Bind to the user stream to get real-time updates
       _currentUser.bindStream(_firestoreService.getUserStream(currentUserId));
-
+      
+      // Set up listener for user data changes
       ever(_currentUser, (UserModel? user) {
+        print('ProfileController: User data changed: $user');
         if (user != null) {
           displayNameController.text = user.displayName;
           emailController.text = user.email;
+        }
+      });
+    } else {
+      print('ProfileController: No current user ID found, checking again in 500ms');
+      // Try to reload after a short delay in case auth state hasn't been initialized yet
+      Future.delayed(Duration(milliseconds: 500), () {
+        final userId = _authController.user?.uid;
+        if (userId != null) {
+          print('ProfileController: Retrying to load user data for UID: $userId');
+          _currentUser.bindStream(_firestoreService.getUserStream(userId));
+        } else {
+          // If still no user ID, try one more time after another delay
+          Future.delayed(Duration(milliseconds: 500), () {
+            final userId = _authController.user?.uid;
+            if (userId != null) {
+              print('ProfileController: Final attempt to load user data for UID: $userId');
+              _currentUser.bindStream(_firestoreService.getUserStream(userId));
+            }
+          });
         }
       });
     }
@@ -79,54 +116,93 @@ class ProfileController extends GetxController {
 
       await _firestoreService.updateUser(updateUser);
       _isEditing.value = false;
-      Get.snackbar('Success', 'Profile update successfully');
+      Get.snackbar(
+        'Success', 
+        'Profile updated successfully',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
     } catch (e) {
       _error.value = e.toString();
       print(e.toString());
-      Get.snackbar('Error', 'Failed to update profile');
+      Get.snackbar(
+        'Error', 
+        'Failed to update profile',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
     } finally {
       _isLoading.value = false;
     }
   }
 
-  Future<void> signOut( context) async {
+  Future<void> signOut() async {
     try {
-      await _authController.signOut(context);
+      print('ProfileController: Attempting to sign out');
+      await _authController.signOut();
+      print('ProfileController: Sign out successful');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to sign out');
+      print('ProfileController: Error signing out: $e');
+      Get.snackbar(
+        'Error', 
+        'Failed to sign out: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
     }
   }
 
-  Future<void> deleteAccount(context) async {
+  Future<void> deleteAccount() async {
     try {
+      print('ProfileController: Showing delete account confirmation dialog');
+
       final result = await Get.dialog<bool>(
         AlertDialog(
           title: Text("Delete Account"),
-          content: Text("Are you sure? Do you want to delete this account?"),
+          content: Text("Are you sure you want to delete this account?"),
           actions: [
             TextButton(
-              onPressed: () => Get.back(result: false),
+              onPressed: () => Navigator.pop(Get.context!, false),
               child: Text("Cancel"),
             ),
             TextButton(
-              onPressed: () => Get.back(result: true),
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              onPressed: () => Navigator.pop(Get.context!, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: Text("Delete"),
             ),
           ],
         ),
+        barrierDismissible: false, // IMPORTANT FIX
       );
 
-      if (result == true) {
-        _isLoading.value = true;
-        await _authController.deleteAccount(context);
+      if (result != true) {
+        print("ProfileController: User cancelled delete");
+        return;
       }
+
+      print('ProfileController: User confirmed account deletion');
+
+      _isLoading.value = true;
+
+      await _authController.deleteAccount();
+      print('ProfileController: Account deletion successful');
+
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete account');
+      print('ProfileController: Error deleting account: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to delete account: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
       _isLoading.value = false;
     }
   }
+
 
   String getJoinedData() {
     final user = _currentUser.value;

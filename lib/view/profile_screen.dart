@@ -13,7 +13,7 @@ class ProfileScreen extends GetView<ProfileController> {
       appBar: AppBar(
         title: const Text("Profile"),
         leading: IconButton(
-          onPressed: () => Get.back(),
+          onPressed: () => Navigator.pop(Get.context!) ,
           icon: const Icon(Icons.arrow_back),
         ),
         actions: [
@@ -35,13 +35,11 @@ class ProfileScreen extends GetView<ProfileController> {
       body: Obx(() {
         final user = controller.currentUser;
 
+        print('user: $user');
+        print('controller: $controller');
+
         if (user == null) {
-          return Center(
-            child: CircularProgressIndicator(
-              color: AppTheme.primaryColor,
-              strokeWidth: 2,
-            ),
-          );
+          return _buildLoadingWidget();
         }
 
         return SingleChildScrollView(
@@ -80,7 +78,13 @@ class ProfileScreen extends GetView<ProfileController> {
                         ),
                         child: IconButton(
                           onPressed: () {
-                            Get.snackbar("Info", "Photo update coming soon!");
+                            Get.snackbar(
+                              "Info", 
+                              "Photo update coming soon!",
+                              backgroundColor: Colors.blue,
+                              colorText: Colors.white,
+                              duration: Duration(seconds: 3),
+                            );
                           },
                           icon: const Icon(Icons.camera_alt),
                         ),
@@ -238,7 +242,7 @@ class ProfileScreen extends GetView<ProfileController> {
                         Icons.arrow_forward_ios,
                         color: AppTheme.primaryColor,
                       ),
-                      onTap: () => controller.deleteAccount,
+                      onTap: () => controller.deleteAccount(),
                     ),
                     Divider(height: 1, color: AppTheme.errorColor),
                     ListTile(
@@ -248,7 +252,7 @@ class ProfileScreen extends GetView<ProfileController> {
                         Icons.arrow_forward_ios,
                         color: AppTheme.primaryColor,
                       ),
-                      onTap: () => controller.signOut,
+                      onTap: () => controller.signOut(),
                     ),
                   ],
                 ),
@@ -264,6 +268,36 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
         );
       }),
+    );
+  }
+
+  Widget _buildLoadingWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            color: AppTheme.primaryColor,
+            strokeWidth: 2,
+          ),
+          SizedBox(height: 16),
+          Text(
+            "Loading profile...",
+            style: TextStyle(
+              fontSize: 16,
+              color: AppTheme.textSceTheme,
+            ),
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              // Retry loading user data by calling the controller's method
+              Get.find<ProfileController>().loadUserData();
+            },
+            child: Text("Retry"),
+          ),
+        ],
+      ),
     );
   }
 

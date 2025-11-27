@@ -26,8 +26,8 @@ class UserModel {
       "displayName": displayName,
       "photoUrl": photoUrl,
       "isOnline": isOnline,
-      "lastSeen": lastSeen,
-      "createdAt": createdAt,
+      "lastSeen": lastSeen.microsecondsSinceEpoch,
+      "createdAt": createdAt.microsecondsSinceEpoch,
     };
   }
 
@@ -38,9 +38,36 @@ class UserModel {
       displayName: map['displayName'] ?? '',
       photoUrl: map['photoUrl'] ?? '',
       isOnline: map['isOnline'] ?? false,
-      lastSeen: (map['lastSeen'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastSeen: _parseDateTime(map['lastSeen']) ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
     );
+  }
+
+  /// Helper method to parse DateTime from various possible formats
+  static DateTime? _parseDateTime(dynamic value) {
+    try {
+      if (value == null) return null;
+      
+      // If it's already a DateTime, return it
+      if (value is DateTime) return value;
+      
+      // If it's a Timestamp, convert to DateTime
+      if (value is Timestamp) return value.toDate();
+      
+      // If it's an int (microseconds since epoch), convert to DateTime
+      if (value is int) return DateTime.fromMicrosecondsSinceEpoch(value);
+      
+      // If it's a String, try to parse it
+      if (value is String) return DateTime.parse(value);
+      
+      // If it's a double, treat as milliseconds since epoch
+      if (value is double) return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+      
+      return null;
+    } catch (e) {
+      print('UserModel: Error parsing DateTime from value: $value, error: $e');
+      return null;
+    }
   }
 
   UserModel copyWith({

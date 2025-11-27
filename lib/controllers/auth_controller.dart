@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:messanger/models/user_model.dart';
 import 'package:messanger/routes/app_routes.dart';
@@ -35,19 +36,41 @@ class AuthController extends GetxController {
   }
 
   void _handleAuthStateChanges(User? user) {
+    // Only handle auth state changes after initialization
     if (!_isInitialize.value) {
       _isInitialize.value = true;
       return;
     }
     
     if (user == null) {
+      // Only navigate to login if we're not already on the login screen
       if (Get.currentRoute != AppRoutes.login && Get.currentRoute != AppRoutes.splash) {
         Get.offAllNamed(AppRoutes.login);
       }
     } else {
-      if (Get.currentRoute != AppRoutes.profile && Get.currentRoute != AppRoutes.splash) {
-        Get.offAllNamed(AppRoutes.profile);
+      // When user signs in, fetch their data
+      _fetchUserData(user.uid);
+      
+      // Only navigate to main if we're not already on the main screen
+      if (Get.currentRoute != AppRoutes.main && Get.currentRoute != AppRoutes.splash) {
+        Get.offAllNamed(AppRoutes.main);
       }
+    }
+  }
+
+  /// Fetch user data from Firestore when user signs in
+  Future<void> _fetchUserData(String userId) async {
+    try {
+      print('AuthController: Fetching user data for ID: $userId');
+      final userData = await _authService.getUserData(userId);
+      if (userData != null) {
+        _userModel.value = userData;
+        print('AuthController: User data fetched successfully');
+      } else {
+        print('AuthController: No user data found');
+      }
+    } catch (e) {
+      print('AuthController: Error fetching user data: $e');
     }
   }
 
@@ -55,7 +78,9 @@ class AuthController extends GetxController {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       _user.value = currentUser;
-      Get.offAllNamed(AppRoutes.profile);
+      // Fetch user data for the current user
+      _fetchUserData(currentUser.uid);
+      Get.offAllNamed(AppRoutes.main);
     } else {
       Get.offAllNamed(AppRoutes.login);
     }
@@ -73,13 +98,24 @@ class AuthController extends GetxController {
       );
       if (userModel != null) {
         _userModel.value = userModel;
+        // Make sure we always navigate to main screen after successful sign in
+        Get.offAllNamed(AppRoutes.main);
+      } else {
+        // Handle case where sign in was successful but user data wasn't fetched
         Get.offAllNamed(AppRoutes.main);
       }
     } catch (e) {
       _error.value = e.toString();
-      Get.snackbar('Error', 'Failed to login');
-      print(e);
+      Get.snackbar(
+        'Error', 
+        'Failed to login: ${e.toString()}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+      print('AuthController: Error signing in: $e');
     } finally {
+      // Always reset loading state
       _isLoading.value = false;
     }
   }
@@ -104,38 +140,66 @@ class AuthController extends GetxController {
       }
     } catch (e) {
       _error.value = e.toString();
-      Get.snackbar('Error', 'Failed to Create account');
+      Get.snackbar(
+        'Error', 
+        'Failed to Create account',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
       print(e);
     } finally {
       _isLoading.value = false;
     }
   }
 
-  Future<void> signOut(String email) async {
+  Future<void> signOut() async {
     try {
+      print('AuthController: Attempting to sign out');
       _isLoading.value = true;
-      await _authService.signOut(email);
+      final userEmail = userModel?.email ?? 'Unknown';
+      print('AuthController: Signing out user with email: $userEmail');
+      await _authService.signOut(userEmail);
       _userModel.value = null;
+      print('AuthController: Sign out successful, navigating to login');
+      // Clear the user model and navigate to login
+      _user.value = null;
       Get.offAllNamed(AppRoutes.login);
     } catch (e) {
       _error.value = e.toString();
-      Get.snackbar('Error', 'Failed to sign out');
-      print(e);
+      Get.snackbar(
+        'Error', 
+        'Failed to sign out',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+      print('AuthController: Error signing out: $e');
     } finally {
       _isLoading.value = false;
     }
   }
 
-  Future<void> deleteAccount(String email) async {
+  Future<void> deleteAccount() async {
     try {
+      print('AuthController: Attempting to delete account');
       _isLoading.value = true;
-      await _authService.deleteAccount(email);
+      final userEmail = userModel?.email ?? 'Unknown';
+      print('AuthController: Deleting account for user with email: $userEmail');
+      await _authService.deleteAccount(userEmail);
       _userModel.value = null;
+      print('AuthController: Account deletion successful, navigating to login');
       Get.offAllNamed(AppRoutes.login);
     } catch (e) {
       _error.value = e.toString();
-      Get.snackbar('Error', 'Failed to delete account');
-      print(e);
+      Get.snackbar(
+        'Error', 
+        'Failed to delete account',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+      print('AuthController: Error deleting account: $e');
     } finally {
       _isLoading.value = false;
     }

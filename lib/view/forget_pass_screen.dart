@@ -25,7 +25,7 @@ class ForgetPassScreen extends StatelessWidget {
                     IconButton(
                       onPressed: () {
                         controller.clearEmailSent();
-                        Get.back();
+                        Get.offAllNamed(AppRoutes.login);
                       }, 
                       icon: Icon(Icons.arrow_back)
                     ),

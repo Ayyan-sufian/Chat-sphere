@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:messanger/controllers/auth_controller.dart';
 import 'package:messanger/routes/app_routes.dart';
+import 'package:messanger/services/firestore_service.dart';
 
 import '../theme/app_theme.dart';
 
@@ -15,6 +18,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final AuthController _authController = Get.find<AuthController>();
+
+  final FirestoreService _firestore = FirestoreService();
+
+
   bool _obscurePass = true;
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passController = TextEditingController();
@@ -130,9 +137,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed:
-                            _authController.isLoading ? null : (){
-                          if(_formKey.currentState?.validate() ?? false ){
+                            _authController.isLoading ? null : () async{
+                          if(_formKey.currentState?.validate() ?? false ) {
                             _authController.signInWithEmailAndPass(_emailController.text.trim(), _passController.text);
+                            String? newToken = await FirebaseMessaging.instance.getToken();
+                            print("New FCM Token: $newToken");
+
                           }
                             },
                         child: _authController.isLoading
@@ -185,6 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextButton(
                         onPressed: () {
                           Get.toNamed(AppRoutes.register);
+
                         },
                         child: Text(
                           "Sign up",

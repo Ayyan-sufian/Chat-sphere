@@ -21,9 +21,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void initState() {
-
     super.initState();
-
 
     _animationController = AnimationController(vsync: this, duration: Duration(seconds: 3));
 
@@ -37,29 +35,18 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   void _checkAuthAndNavigate () async{
     await Future.delayed(Duration(seconds: 2));
+    // Ensure AuthController is initialized only once
     final authController = Get.put(AuthController(), permanent: true);
-    // Wait for the controller to initialize
-    await Future.delayed(Duration(milliseconds: 500));
-    
-    // Check if user is authenticated
-    try {
-      if(authController.isAuthenticate){
-        Get.offAllNamed(AppRoutes.profile);
-      } else {
-        Get.offAllNamed(AppRoutes.login);
-      }
-    } catch (e) {
-      // If there's an error, navigate to login screen
-      print('Error checking auth status: $e');
-      Get.offAllNamed(AppRoutes.login);
-    }
+    // Initialize the auth controller
+    authController.checkInitialAuthState();
   }
 
   @override
   void dispose() {
     // TODO: implement dispose
-    super.dispose();
+
     _animationController.dispose();
+    super.dispose();
   }
   @override
   Widget build(BuildContext context) {
@@ -71,7 +58,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-
               Container(
                 height: 120,
                 width: 120,

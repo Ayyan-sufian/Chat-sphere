@@ -52,8 +52,8 @@ class ForgetPasswordController extends GetxController {
       Get.snackbar(
         'Success',
         'Password reset email sent to $email',
-        backgroundColor: Colors.green.withOpacity(0.1),
-        colorText: Colors.green,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
         duration: Duration(seconds: 4),
       );
     } catch (e) {
@@ -62,8 +62,8 @@ class ForgetPasswordController extends GetxController {
       Get.snackbar(
         'Error',
         e.toString(),
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
         duration: Duration(seconds: 4),
       );
     }finally{
@@ -72,7 +72,7 @@ class ForgetPasswordController extends GetxController {
   }
 
   void goBackToLogin(){
-    Get.back();
+    Navigator.pop(Get.context!);
   }
 
 
