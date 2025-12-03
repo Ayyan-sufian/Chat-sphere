@@ -185,4 +185,14 @@ class AuthService {
       throw Exception('Failed to delete account: ${e}');
     }
   }
+  
+  /// Update user's online status in Firestore
+  Future<void> updateUserOnlineStatus(String userId, bool isOnline) async {
+    try {
+      await _firestoreService.updateUserOnlineStatus(userId, isOnline);
+    } catch (e) {
+      print('AuthService.updateUserOnlineStatus error: $e');
+      // Don't throw exception here as it shouldn't prevent app functionality
+    }
+  }
 }

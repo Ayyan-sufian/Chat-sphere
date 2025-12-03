@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:messanger/models/user_model.dart';
 import 'package:messanger/routes/app_routes.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../services/auth_service.dart';
 
@@ -33,6 +35,9 @@ class AuthController extends GetxController {
     super.onInit();
     _user.bindStream(_authService.authStateChanges);
     ever(_user, _handleAuthStateChanges);
+    
+    // Listen to app lifecycle changes
+    WidgetsBinding.instance.addObserver(_AppLifecycleObserver(this));
   }
 
   void _handleAuthStateChanges(User? user) {
@@ -51,10 +56,25 @@ class AuthController extends GetxController {
       // When user signs in, fetch their data
       _fetchUserData(user.uid);
       
+      // Update user's online status
+      _updateUserOnlineStatus(true);
+      
       // Only navigate to main if we're not already on the main screen
       if (Get.currentRoute != AppRoutes.main && Get.currentRoute != AppRoutes.splash) {
         Get.offAllNamed(AppRoutes.main);
       }
+    }
+  }
+  
+  /// Update user's online status in Firestore
+  Future<void> _updateUserOnlineStatus(bool isOnline) async {
+    try {
+      final currentUser = _user.value;
+      if (currentUser != null) {
+        await _authService.updateUserOnlineStatus(currentUser.uid, isOnline);
+      }
+    } catch (e) {
+      print('AuthController: Error updating user online status: $e');
     }
   }
 
@@ -207,5 +227,39 @@ class AuthController extends GetxController {
 
   void clearError() {
     _error.value = '';
+  }
+}
+
+/// Observer class to handle app lifecycle changes
+class _AppLifecycleObserver extends WidgetsBindingObserver {
+  final AuthController _authController;
+
+  _AppLifecycleObserver(this._authController);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App is in foreground
+        _authController._updateUserOnlineStatus(true);
+        break;
+      case AppLifecycleState.paused:
+        // App is in background
+        _authController._updateUserOnlineStatus(false);
+        break;
+      case AppLifecycleState.inactive:
+        // App is inactive (e.g., showing dialog)
+        break;
+      case AppLifecycleState.detached:
+        // App is detached
+        _authController._updateUserOnlineStatus(false);
+        break;
+      case AppLifecycleState.hidden:
+        // App is hidden
+        _authController._updateUserOnlineStatus(false);
+        break;
+    }
   }
 }

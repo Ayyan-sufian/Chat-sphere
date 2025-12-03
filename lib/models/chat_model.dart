@@ -57,7 +57,7 @@ class ChatModel {
       lastSeenMap = rawLastSeen.map(
         (key, value) => MapEntry(
           key,
-          value != null ? DateTime.fromMillisecondsSinceEpoch(value) : null,
+          value != null ? DateTime.fromMicrosecondsSinceEpoch(value) : null,
         ),
       );
     }
@@ -70,7 +70,7 @@ class ChatModel {
       deleteAtMap = rawDeleteAt.map(
         (key, value) => MapEntry(
           key,
-          value != null ? DateTime.fromMillisecondsSinceEpoch(value) : null,
+          value != null ? DateTime.fromMicrosecondsSinceEpoch(value) : null,
         ),
       );
     }
@@ -87,8 +87,8 @@ class ChatModel {
       deleteBy: Map<String, bool>.from(map['deleteBy'] ?? []),
       deleteAt: deleteAtMap,
       lastSeenBy: lastSeenMap,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updatedAt']),
+      createdAt: DateTime.fromMicrosecondsSinceEpoch(map['createdAt']),
+      updatedAt: DateTime.fromMicrosecondsSinceEpoch(map['updatedAt']),
     );
   }
 

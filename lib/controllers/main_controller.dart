@@ -16,7 +16,7 @@ class MainController extends GetxController {
     super.onInit();
     pageController = PageController();
     Get.lazyPut(() => HomeController());
-    // Uncomment when friend controller is implemented
+
     Get.lazyPut(() => FriendsController());
 
     Get.lazyPut(() => UsersListController());
@@ -40,10 +40,10 @@ class MainController extends GetxController {
 
   int getNotificationCount(){
     try{
-      //final homeController = Get.find<HomeController>();
-      //return homeController.getTotalUnreadCount();
+      final homeController = Get.find<HomeController>();
+      return homeController.getTotalUnreadCount();
 
-      return 7;
+
     }catch(e){
       return 0;
     }
@@ -51,10 +51,10 @@ class MainController extends GetxController {
 
   int getUnread() {
     try {
-      //final homeController = Get.find<HomeController>();
-      //return homeController.getTotalUnreadCount();
+      final homeController = Get.find<HomeController>();
+      return homeController.getTotalUnreadCount();
       
-      return 5;
+     
     } catch (e) {
       return 0;
     }

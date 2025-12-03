@@ -16,21 +16,25 @@ class FindPeopleScreen extends GetView<UsersListController> {
         children: [
           _buildSearchBar(),
           Expanded(
-            child: Obx(() {
-              if (controller.filterUsers.isNull) return _buildEmptyState();
-              return ListView.separated(
-                padding: EdgeInsets.all(16),
-                itemBuilder: (context, index) {
-                  final user = controller.filteredUsers[index];
-                  return UserListItem(user: user,
+            child: RefreshIndicator(
+              onRefresh: controller.refreshUsers,
+              child: Obx(() {
+                if (controller.filterUsers.isNull) return _buildEmptyState();
+                return ListView.separated(
+                  padding: EdgeInsets.all(16),
+                  itemBuilder: (context, index) {
+                    final user = controller.filteredUsers[index];
+                    return UserListItem(
+                      user: user,
                       onTap: () => controller.handleRelationshipAction(user),
-                  controller: controller,
-                  );
-                },
-                separatorBuilder: (context, index) => SizedBox(height: 8),
-                itemCount: controller.filteredUsers.length,
-              );
-            }),
+                      controller: controller,
+                    );
+                  },
+                  separatorBuilder: (context, index) => SizedBox(height: 8),
+                  itemCount: controller.filteredUsers.length,
+                );
+              }),
+            ),
           ),
         ],
       ),

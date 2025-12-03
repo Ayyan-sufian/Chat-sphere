@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:messanger/controllers/main_controller.dart';
 import 'package:messanger/theme/app_theme.dart';
-import 'package:messanger/view/chat_screen.dart';
 import 'package:messanger/view/friends_screen.dart';
+import 'package:messanger/view/home_screen.dart';
 import 'package:messanger/view/profile_screen.dart';
 
 import 'find_people_screen.dart';
@@ -18,7 +18,7 @@ class MainScreen extends GetView<MainController> {
         controller: controller.pageController,
         onPageChanged: controller.onPageChanged,
         children: [
-          ChatScreen(),
+          HomeScreen(),
           FriendsScreen(),
           FindPeopleScreen(),
           ProfileScreen(),

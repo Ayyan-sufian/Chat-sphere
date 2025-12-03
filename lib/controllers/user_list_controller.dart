@@ -94,10 +94,21 @@ class UsersListController extends GetxController {
         _firestoreService.getFriendsStream(currentUserId),
       );
 
-      ever(_sentRequests, (_) => _updateAllRelationshipsStatus());
-      ever(_receiveRequests, (_) => _updateAllRelationshipsStatus());
-      ever(_friendships, (_) => _updateAllRelationshipsStatus());
-      ever(_users, (_) => _updateAllRelationshipsStatus());
+      ever(_sentRequests, (_) {
+        _updateAllRelationshipsStatus();
+      });
+      
+      ever(_receiveRequests, (_) {
+        _updateAllRelationshipsStatus();
+      });
+      
+      ever(_friendships, (_) {
+        _updateAllRelationshipsStatus();
+      });
+      
+      ever(_users, (_) {
+        _updateAllRelationshipsStatus();
+      });
     }
   }
 
@@ -106,18 +117,29 @@ class UsersListController extends GetxController {
 
     if (currentUserId == null) return;
 
+    print('Updating all relationship statuses for ${_users.length} users');
+    
     for (var user in _users) {
       if (user.id != currentUserId) {
         final status = _calculateUserRelationshipStatus(user.id);
         _userRelationships[user.id] = status;
+        print('User ${user.displayName} (${user.id}) relationship status: $status');
       }
     }
+    _userRelationships.refresh();
+    print('Finished updating relationship statuses');
   }
 
   UserRelationshipStatus _calculateUserRelationshipStatus(String userId) {
     final currentUserId = _authController.user?.uid;
 
     if (currentUserId == null) return UserRelationshipStatus.none;
+
+    print('Calculating relationship status for user $userId');
+    print('Current user: $currentUserId');
+    print('Friendships count: ${_friendships.length}');
+    print('Sent requests count: ${_sentRequests.length}');
+    print('Received requests count: ${_receiveRequests.length}');
 
     final friendship = _friendships.firstWhereOrNull(
       (friendship) =>
@@ -126,16 +148,22 @@ class UsersListController extends GetxController {
     );
 
     if (friendship != null) {
-      if (friendship.isBlocked)
+      print('Found friendship with user $userId');
+      if (friendship.isBlocked) {
+        print('Friendship is blocked');
         return UserRelationshipStatus.blocked;
-      else
+      } else {
+        print('Friendship is active');
         return UserRelationshipStatus.friends;
+      }
     }
+    
     final sentRequest = _sentRequests.firstWhereOrNull(
       (request) => request.receiverId == userId && request.status == FriendRequestStatus.pending,
     );
 
     if (sentRequest != null) {
+      print('Found sent request to user $userId');
       return UserRelationshipStatus.friendRequestSent;
     }
 
@@ -144,9 +172,11 @@ class UsersListController extends GetxController {
     );
 
     if (receiveRequest != null) {
+      print('Found received request from user $userId');
       return UserRelationshipStatus.friendRequestReceive;
     }
 
+    print('No relationship found with user $userId');
     return UserRelationshipStatus.none;
 
   }
@@ -181,6 +211,8 @@ class UsersListController extends GetxController {
       _isLoading.value = true;
       final currentUserId = _authController.user?.uid;
 
+      print('Sending friend request from $currentUserId to ${user.id} (${user.displayName})');
+
       if (currentUserId != null) {
         final request = FriendRequestModel(
           id: _uuid.v4(),
@@ -190,12 +222,21 @@ class UsersListController extends GetxController {
           createdAt: DateTime.now(),
         );
         _userRelationships[user.id] = UserRelationshipStatus.friendRequestSent;
+        _userRelationships.refresh();
+        print('Updated local relationship status for ${user.id} to friendRequestSent');
 
         await _firestoreService.sendFriendRequest(request);
+        print('Friend request sent to Firestore');
+        
+        // Give streams time to update before refreshing relationships
+        await Future.delayed(Duration(milliseconds: 100));
+        // Refresh relationships to ensure UI is updated
+        _updateAllRelationshipsStatus();
+        
+        Get.snackbar('Success', "Friend request sent to ${user.displayName}");
       }
-      Get.snackbar('Error', "Friend request sent to ${user.displayName}");
-     
     } catch (e) {
+      print('Error sending friend request: $e');
       _userRelationships[user.id] = UserRelationshipStatus.none;
       _error.value = e.toString();
       Get.snackbar('Error','Failed to send friend request');
@@ -280,11 +321,17 @@ class UsersListController extends GetxController {
 
         if (request != null) {
           _userRelationships[user.id] = UserRelationshipStatus.friends;
+          _userRelationships.refresh();
 
           await _firestoreService.respondToFriendRequest(
             request.id,
             FriendRequestStatus.accepted,
           );
+          
+          // Remove the request from the list
+          _receiveRequests.remove(request);
+          _receiveRequests.refresh();
+          
           Get.snackbar('Success', "Friend request accepted from ${user.displayName}");
         }
       }
@@ -297,33 +344,42 @@ class UsersListController extends GetxController {
     }
   }
 
-  Future<void> deleteFriendRequest(FriendshipModel friendship) async {
+  Future<void> deleteFriendRequest(UserModel user) async {
     try {
       _isLoading.value = true;
       final currentUserId = _authController.user?.uid;
 
       if (currentUserId != null) {
+        // Find the correct request to decline
         final request = _receiveRequests.firstWhereOrNull(
-          (request) => request.senderId == friendship.user1Id && request.status == FriendRequestStatus.pending,
+          (request) => request.senderId == user.id && request.status == FriendRequestStatus.pending,
         );
         if (request != null) {
-          _userRelationships[request.senderId] = UserRelationshipStatus.none;
+          _userRelationships[user.id] = UserRelationshipStatus.none;
+          _userRelationships.refresh();
+          
           await _firestoreService.respondToFriendRequest(
             request.id,
             FriendRequestStatus.declined,
           );
-          Get.snackbar('Success', "Friend request deleted");
+          
+          // Remove from local list
+          _receiveRequests.remove(request);
+          _receiveRequests.refresh();
+          
+          Get.snackbar('Success', "Friend request declined");
+        } else {
+          Get.snackbar('Info', "No pending friend request found");
         }
       } 
     
     } catch (e) {
       _error.value = e.toString();
-      Get.snackbar('Error', 'Failed to delete friend request');
+      Get.snackbar('Error', 'Failed to decline friend request');
     } finally {
       _isLoading.value = false;
     }
   }
-
 
   Future<void> startChat(UserModel user) async {
     try {
@@ -350,6 +406,15 @@ class UsersListController extends GetxController {
       Get.snackbar('Error','Failed to start chat');
     } finally {
       _isLoading.value = false;
+    }
+  }
+
+  Future<void> refreshUsers() async {
+    final currentUserId = _authController.user?.uid;
+    
+    if (currentUserId != null) {
+      _loadUsers();
+      _loadRelationships();
     }
   }
 
@@ -441,11 +506,13 @@ class UsersListController extends GetxController {
       if (difference.inMinutes < 1) {
         return 'Just now';
       } else if (difference.inHours < 1) {
+        return 'Last seen ${difference.inMinutes} minutes ago';
+      } else if (difference.inHours < 24) {
         return 'Last seen ${difference.inHours} hours ago';
-        } else if (difference.inDays < 7) {
+      } else if (difference.inDays < 7) {
         return 'Last seen ${difference.inDays} days ago';
       } else {
-        return 'Last seen ${user.lastSeen.day}/${user.lastSeen.month}/${user.lastSeen.year} days ago';
+        return 'Last seen on ${user.lastSeen.day}/${user.lastSeen.month}/${user.lastSeen.year}';
       }
     }
   }

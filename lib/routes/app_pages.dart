@@ -4,9 +4,13 @@ import 'package:messanger/controllers/profile_controller.dart';
 import 'package:messanger/controllers/user_list_controller.dart';
 import 'package:messanger/routes/app_routes.dart';
 import 'package:messanger/view/find_people_screen.dart';
+import 'package:messanger/view/friend_request_screen.dart';
 import 'package:messanger/view/main_screen.dart';
+import 'package:messanger/view/notification_screen.dart';
 
+import '../controllers/friend_request_controller.dart';
 import '../controllers/friends_controller.dart';
+import '../controllers/notification_controller.dart';
 import '../view/change_pass_screen.dart';
 import '../view/forget_pass_screen.dart';
 import '../view/friends_screen.dart';
@@ -48,14 +52,14 @@ class AppPages {
       binding: BindingsBuilder(() {
         Get.put(FriendsController());
       },),),
-    // GetPage(name:  AppRoutes.friendRequests, page: () => const FriendRequestScreen(),
-    //   binding: BindingsBuilder(() {
-    //     Get.put(NotificationController());
-    //   },),),
-    // GetPage(name:  AppRoutes.notifications, page: () => const NotificationsScreen(),
-    // binding: BindingsBuilder(() {
-    //   Get.put(NotificationController());
-    // },),
-    // ),
+    GetPage(name:  AppRoutes.friendRequests, page: () => FriendRequestScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(FriendRequestController());
+      },),),
+    GetPage(name:  AppRoutes.notifications, page: () => NotificationScreen(),
+    binding: BindingsBuilder(() {
+      Get.put(NotificationController());
+    },),
+    ),
   ];
 }

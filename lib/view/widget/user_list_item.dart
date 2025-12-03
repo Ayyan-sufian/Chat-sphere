@@ -46,6 +46,7 @@ class UserListItem extends StatelessWidget {
               SizedBox(width: 10),
               Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       user.displayName,
@@ -60,18 +61,31 @@ class UserListItem extends StatelessWidget {
                           ?.copyWith(color: AppTheme.textSceTheme),
                       overflow: TextOverflow.ellipsis,
                     ),
+                    SizedBox(height: 4),
+                    Text(
+                      controller.getLastSeenText(user),
+                      style: Theme.of(Get.context!).textTheme.bodySmall?.copyWith(
+                        color: user.isOnline ? Colors.green : AppTheme.textSceTheme,
+                        fontWeight: user.isOnline ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Column(children: [_buildActionButton(relationshipStatus),
               if (relationshipStatus == UserRelationshipStatus.friendRequestReceive)... [
                 SizedBox(height: 4,),
-                OutlinedButton.icon(onPressed: () => controller.cancelFriendRequest(user), label: Text("Decline",style: TextStyle(fontSize: 10),),icon: Icon(Icons.close),style: OutlinedButton.styleFrom(
-                  backgroundColor: AppTheme.errorColor,
-                  side: BorderSide(color: AppTheme.errorColor),
-                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  minimumSize: Size(0, 24)
-                ),)
+                OutlinedButton.icon(
+                  onPressed: () => controller.deleteFriendRequest(user),
+                  label: Text("Decline",style: TextStyle(fontSize: 10, color: Colors.white),),
+                  icon: Icon(Icons.close,color: Colors.white),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: AppTheme.errorColor,
+                    side: BorderSide(color: AppTheme.errorColor),
+                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    minimumSize: Size(0, 24)
+                  ),
+                )
               ]
               ],),
             ],

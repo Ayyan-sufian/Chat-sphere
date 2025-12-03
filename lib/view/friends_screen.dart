@@ -102,7 +102,7 @@ class FriendsScreen extends GetView<FriendsController> {
                 borderRadius: BorderRadius.circular(50),
               ),
               child: Icon(
-                Icons.person_2_outlined,
+                Icons.group_outlined,
                 size: 50,
                 color: AppTheme.primaryColor,
               ),
@@ -136,7 +136,7 @@ class FriendsScreen extends GetView<FriendsController> {
               textAlign: TextAlign.center,
             ),
 
-            if (controller.searchQuery.isNotEmpty) ...[
+            if (controller.searchQuery.isEmpty) ...[
               SizedBox(height: 8),
               ElevatedButton.icon(onPressed: () => controller.openFriendRequest(), icon: Icon(Icons.person_add_alt_1),
               label: Text('View friend requests'),

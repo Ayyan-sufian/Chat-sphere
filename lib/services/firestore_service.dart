@@ -5,6 +5,7 @@ import 'package:messanger/models/friendship_model.dart';
 import 'package:messanger/models/message_model.dart';
 import 'package:messanger/models/notification_model.dart';
 import 'package:messanger/models/user_model.dart';
+import 'package:rxdart/rxdart.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -153,8 +154,21 @@ class FirestoreService {
 
         await _firestore.collection('friendRequests').doc(requestId).delete();
 
+        // Notify the receiver that the request has been cancelled
+        await createNotification(
+          NotificationModel(
+            id: 'friend_cancel_${request.senderId}_${request.receiverId}_${DateTime.now().microsecondsSinceEpoch}',
+            userId: request.receiverId,
+            type: NotificationType.friendRequest,
+            data: {'senderId': request.senderId, 'requestId': requestId},
+            title: 'Friend Request Cancelled',
+            body: 'Friend request has been cancelled',
+            createdAt: DateTime.now(),
+          ),
+        );
+
         await deleteNotificationByTypeAndUser(
-          request.senderId,
+          request.receiverId,
           NotificationType.friendRequest,
           request.senderId,
         );
@@ -171,7 +185,7 @@ class FirestoreService {
     try {
       await _firestore.collection('friendRequests').doc(requestId).update({
         'status': status.name,
-        'respondedAt': DateTime.now().millisecondsSinceEpoch,
+        'respondedAt': DateTime.now().microsecondsSinceEpoch,
       });
 
       DocumentSnapshot requestDoc = await _firestore
@@ -186,36 +200,40 @@ class FirestoreService {
         if (status == FriendRequestStatus.accepted) {
           await createFriendship(request.senderId, request.receiverId);
 
+          // Notify the sender that their request was accepted
           await createNotification(
             NotificationModel(
-              id: DateTime.now().microsecondsSinceEpoch.toString(),
-              userId: request.receiverId,
+              id: 'friend_accept_${request.senderId}_${request.receiverId}_${DateTime.now().microsecondsSinceEpoch}',
+              userId: request.senderId,
               type: NotificationType.friendRequest,
-              data: {'userId': request.receiverId},
-              title: 'New friend Request',
-              body: 'You have receive a new friend request',
+              data: {'senderId': request.receiverId, 'requestId': requestId},
+              title: 'Friend Request Accepted',
+              body: 'Your friend request has been accepted',
               createdAt: DateTime.now(),
             ),
           );
+          
           await _removeNotificationForCancelledRequest(
-            request.receiverId,
             request.senderId,
+            request.receiverId,
           );
         } else if (status == FriendRequestStatus.declined) {
+          // Notify the sender that their request was declined
           await createNotification(
             NotificationModel(
-              id: DateTime.now().microsecondsSinceEpoch.toString(),
-              userId: request.receiverId,
+              id: 'friend_decline_${request.senderId}_${request.receiverId}_${DateTime.now().microsecondsSinceEpoch}',
+              userId: request.senderId,
               type: NotificationType.friendRequest,
-              data: {'userId': request.receiverId},
-              title: 'New friend Request',
-              body: 'You have receive a new friend request',
+              data: {'senderId': request.receiverId, 'requestId': requestId},
+              title: 'Friend Request Declined',
+              body: 'Your friend request has been declined',
               createdAt: DateTime.now(),
             ),
           );
+          
           await _removeNotificationForCancelledRequest(
-            request.receiverId,
             request.senderId,
+            request.receiverId,
           );
         }
       }
@@ -242,6 +260,7 @@ class FirestoreService {
     return _firestore
         .collection('friendRequests')
         .where('senderId', isEqualTo: userId)
+        .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
@@ -354,32 +373,51 @@ class FirestoreService {
   }
 
   Stream<List<FriendshipModel>> getFriendsStream(String userId) {
-    return _firestore
+    // Create two streams for friendships where user is user1 or user2
+    Stream<QuerySnapshot> stream1 = _firestore
         .collection('friendships')
         .where('user1Id', isEqualTo: userId)
-        .snapshots()
-        .asyncMap((snapshot1) async {
-          QuerySnapshot snapshot2 = await _firestore
-              .collection('friendships')
-              .where('user2Id', isEqualTo: userId)
-              .get();
-
-          List<FriendshipModel> friendships = [];
-
-          for (var doc in snapshot1.docs) {
-            friendships.add(
-              FriendshipModel.fromMap(doc.data() as Map<String, dynamic>),
-            );
+        .snapshots();
+        
+    Stream<QuerySnapshot> stream2 = _firestore
+        .collection('friendships')
+        .where('user2Id', isEqualTo: userId)
+        .snapshots();
+    
+    // Combine both streams
+    return Rx.combineLatest2(stream1, stream2, (snapshot1, snapshot2) {
+      List<FriendshipModel> friendships = [];
+      
+      // Add friendships where user is user1
+      for (var doc in snapshot1.docs) {
+        try {
+          FriendshipModel friendship = FriendshipModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+          );
+          if (!friendship.isBlocked) {
+            friendships.add(friendship);
           }
-          for (var doc in snapshot2.docs) {
-            friendships.add(
-              FriendshipModel.fromMap(doc.data() as Map<String, dynamic>),
-            );
+        } catch (e) {
+          print('Error parsing friendship: $e');
+        }
+      }
+      
+      // Add friendships where user is user2
+      for (var doc in snapshot2.docs) {
+        try {
+          FriendshipModel friendship = FriendshipModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+          );
+          if (!friendship.isBlocked) {
+            friendships.add(friendship);
           }
-          return friendships
-              .where((friendship) => !friendship.isBlocked)
-              .toList();
-        });
+        } catch (e) {
+          print('Error parsing friendship: $e');
+        }
+      }
+      
+      return friendships;
+    });
   }
 
   Future<FriendshipModel?> getFriendship(String userId1, String userId2) async {
@@ -760,7 +798,7 @@ class FirestoreService {
       QuerySnapshot notifications = await _firestore
           .collection('notifications')
           .where('userId', isEqualTo: userId)
-          .where('type', isEqualTo: type)
+          .where('type', isEqualTo: type.name)
           .get();
       WriteBatch batch = _firestore.batch();
       for (var doc in notifications.docs) {
@@ -774,7 +812,6 @@ class FirestoreService {
       }
       await batch.commit();
     } catch (e) {
-      //throw Exception('FirestoreService.deleteMessageByTypeAndUser error: $e');
       print(' error delete message by type and user: $e');
     }
   }
@@ -785,9 +822,9 @@ class FirestoreService {
   ) async {
     try {
       await deleteNotificationByTypeAndUser(
-        receiverId,
-        NotificationType.friendRequest,
         senderId,
+        NotificationType.friendRequest,
+        receiverId,
       );
     } catch (e) {
       throw Exception(

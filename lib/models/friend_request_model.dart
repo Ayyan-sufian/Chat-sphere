@@ -1,4 +1,4 @@
-enum FriendRequestStatus { pending, accepted, declined, canceled }
+enum FriendRequestStatus { pending, accepted, declined, }
 
 class FriendRequestModel {
   final String id;
@@ -25,8 +25,8 @@ class FriendRequestModel {
       'senderId': senderId,
       'receiverId': receiverId,
       'status': status.name,
-      'createdAt': createdAt.millisecondsSinceEpoch,
-      'respondedAt': respondedAt?.millisecondsSinceEpoch,
+      'createdAt': createdAt.microsecondsSinceEpoch,
+      'respondedAt': respondedAt?.microsecondsSinceEpoch,
       'message': message,
     };
   }
@@ -40,9 +40,9 @@ class FriendRequestModel {
         (e) => e.name == map['status'],
         orElse: () => FriendRequestStatus.pending,
       ),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
+      createdAt: DateTime.fromMicrosecondsSinceEpoch(map['createdAt'] ?? 0),
       respondedAt: map['respondedAt'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['respondedAt'])
+          ? DateTime.fromMicrosecondsSinceEpoch(map['respondedAt'])
           : null,
       message: map['message'],
     );

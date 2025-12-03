@@ -225,11 +225,13 @@ class FriendsController extends GetxController {
       if (difference.inMinutes < 1) {
         return 'Just now';
       } else if (difference.inHours < 1) {
+        return 'Last seen ${difference.inMinutes} minutes ago';
+      } else if (difference.inHours < 24) {
         return 'Last seen ${difference.inHours} hours ago';
       } else if (difference.inDays < 7) {
         return 'Last seen ${difference.inDays} days ago';
       } else {
-        return 'Last seen ${user.lastSeen.day}/${user.lastSeen.month}/${user.lastSeen.year} days ago';
+        return 'Last seen on ${user.lastSeen.day}/${user.lastSeen.month}/${user.lastSeen.year}';
       }
     }
   }
